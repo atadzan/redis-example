@@ -1,0 +1,9 @@
+http:
+  host: 192.168.1.61
+  port: 8070
+
+redis:
+  host: 192.168.1.61
+  port: 6380
+  guestDb: 0
+  userDb: 1
