@@ -17,8 +17,8 @@ func NewHandler(services *services.Service) *Handler {
 
 func (h *Handler) InitRoutes(app *fiber.App) {
 
-	app.Post("/:id/add", h.addSet)
-	app.Get("/:id", h.getByKey)
+	app.Post("/:id/add", h.add)
+	app.Get("/all", h.getAll)
 	//app.Get("/all", h.getAll)
 	//app.Delete("/:key", h.removeSet)
 	//app.Put("/:key", h.updateSet)

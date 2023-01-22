@@ -20,6 +20,6 @@ func (s *UserService) Add(ctx context.Context, key string, value models.User) (i
 	return s.repos.Add(ctx, key, value)
 }
 
-func (s *UserService) GetById(ctx context.Context, id string) (models.User, error) {
-	return s.repos.GetById(ctx, id)
+func (s *UserService) Get(ctx context.Context, offset int64) ([]models.User, error) {
+	return s.repos.Get(ctx, offset)
 }

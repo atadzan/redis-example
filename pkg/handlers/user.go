@@ -4,9 +4,12 @@ import (
 	"context"
 	"github.com/gofiber/fiber/v2"
 	"redis-example/models"
+	"strconv"
 )
 
-func (h *Handler) addSet(c *fiber.Ctx) error {
+const elemPerPage = 5
+
+func (h *Handler) add(c *fiber.Ctx) error {
 	id := c.Params("id")
 	var user models.User
 	if err := c.BodyParser(&user); err != nil {
@@ -21,12 +24,17 @@ func (h *Handler) addSet(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{"Result": result})
 }
 
-func (h *Handler) getByKey(c *fiber.Ctx) error {
-	id := c.Params("/:id")
-	ctx := context.Background()
-	result, err := h.Service.User.GetById(ctx, id)
+func (h *Handler) getAll(c *fiber.Ctx) error {
+	page, err := strconv.Atoi(c.Query("page", "1"))
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid page param"})
+	}
+	var offset int64
+	offset = int64((page - 1) * elemPerPage)
+	ctx := context.Background()
+	result, resErr := h.Service.User.Get(ctx, offset)
+	if resErr != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": resErr.Error()})
 	}
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{"Result": result})
 }

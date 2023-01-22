@@ -2,7 +2,6 @@ package repository
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"github.com/go-redis/redis/v8"
 	"redis-example/models"
@@ -19,35 +18,51 @@ func NewUserManager(client *redis.Client) *UserManager {
 }
 
 func (r *UserManager) Add(ctx context.Context, key string, value models.User) (int64, error) {
-	customJson, err := json.Marshal(value)
-	if err != nil {
-		return 0, err
-	}
-	//data := map[string]interface{}{
-	//	"name":     value.Name,
-	//	"lastName": value.LastName,
-	//	"age":      value.Age,
-	//}
-	//outputData, err := json.Marshal(data)
-	//if err != nil {
-	//	return 0, err
-	//}
-	fmt.Println(key)
-	//result, iErr := r.client.Do(ctx, "ZADD", key, 2, customJson).Result()
 	var members []*redis.Z
-	member := redis.Z{Score: 0, Member: customJson}
-
+	member := redis.Z{Score: 1, Member: key}
 	members = append(members, &member)
-	result, iErr := r.client.ZAdd(ctx, key, members...).Result()
+	resultCount, iErr := r.client.ZAdd(ctx, "videos", members...).Result()
 	if iErr != nil {
-		return 0, err
+		fmt.Println(iErr.Error())
+		return 0, iErr
 	}
-	fmt.Println(result)
-	return 1, nil
+
+	// Another way of adding to cache
+	//result, iErr := r.client.Do(ctx, "ZADD", key, 2, customJson).Result()
+
+	if resultCount != 0 {
+		//if _, err := r.client.Pipelined(ctx, func(rdb redis.Pipeliner) error {
+		//	rdb.
+		//}); err != nil {
+		//	return 0, err
+		//}
+		err := r.client.HSet(ctx, key, "name", value.Name, "lastName", value.LastName, "age", value.Age).Err()
+		if err != nil {
+			return 0, err
+		}
+		//fmt.Println()
+	}
+
+	return resultCount, nil
 }
 
-func (r *UserManager) GetById(ctx context.Context, id string) (models.User, error) {
-	var user models.User
-	//result := r.client.Z
-	return user, nil
+func (r *UserManager) Get(ctx context.Context, offset int64) ([]models.User, error) {
+	fmt.Println("get repo")
+	var users []models.User
+	count := 5
+	result, err := r.client.ZRangeByScore(ctx, "videos", &redis.ZRangeBy{Min: "0", Max: "-1", Offset: offset, Count: int64(count)}).Result()
+	if err != nil {
+		fmt.Println("Error 1")
+		return users, err
+	}
+	fmt.Println("result: ", result)
+	for _, key := range result {
+		var user models.User
+		err = r.client.HGetAll(ctx, key).Scan(&user)
+		if err != nil {
+			return nil, err
+		}
+		users = append(users, user)
+	}
+	return users, nil
 }
