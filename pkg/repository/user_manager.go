@@ -2,9 +2,12 @@ package repository
 
 import (
 	"context"
+	"encoding/json"
 	"github.com/go-redis/redis/v8"
+	jsoniter "github.com/json-iterator/go"
 	"log"
 	"redis-example/models"
+	"time"
 )
 
 type UserManager struct {
@@ -24,12 +27,15 @@ func (r *UserManager) Add(ctx context.Context, score float64, key string, value 
 	if iErr != nil {
 		log.Fatalln(iErr)
 	}
+	sub, err := json.Marshal(value)
+	if err != nil {
+		log.Fatalln(err)
+	}
 
-	if resultCount != 0 {
-		// Adding value to hash
-		if err := r.client.HSet(ctx, key, "name", value.Name, "lastName", value.LastName, "age", value.Age).Err(); err != nil {
-			log.Fatalln(err)
-		}
+	// Adding value to hash
+	if err = r.client.Set(ctx, key, sub, 5*time.Minute).Err(); err != nil {
+
+		log.Fatalln(err)
 	}
 
 	return resultCount, nil
@@ -55,11 +61,14 @@ func (r *UserManager) GetAll(ctx context.Context, key string, offset, count int6
 	var users []models.User
 	for _, k := range result {
 		var user models.User
-
-		// Get the value from hash by key
-		err = r.client.HGetAll(ctx, k).Scan(&user)
+		// Get the value by key
+		results, rErr := r.client.Get(ctx, k).Result()
+		if rErr != nil {
+			log.Fatalln(rErr)
+		}
+		err = jsoniter.UnmarshalFromString(results, user)
 		if err != nil {
-			log.Fatalln(err)
+			return nil, err
 		}
 		users = append(users, user)
 	}
@@ -69,9 +78,14 @@ func (r *UserManager) GetAll(ctx context.Context, key string, offset, count int6
 func (r *UserManager) GetByKey(ctx context.Context, key string) (models.User, error) {
 	var user models.User
 
-	// Get the value of key from hash & scan it into struct
-	if err := r.client.HGetAll(ctx, key).Scan(&user); err != nil {
+	// Get the value by key
+	result, err := r.client.Get(ctx, key).Result()
+	if err != nil {
 		return user, err
+	}
+	err = jsoniter.UnmarshalFromString(result, &user)
+	if err != nil {
+		return models.User{}, err
 	}
 	return user, nil
 }
@@ -83,15 +97,7 @@ func (r *UserManager) RemoveElemFromSet(ctx context.Context, set, key string) (i
 		log.Fatalln(err)
 	}
 
-	// Get all fields of elem by hash key
-	keys, keyErr := r.client.HKeys(ctx, key).Result()
-	if keyErr != nil {
-		return 0, keyErr
-	}
-
-	// Remove elems all fields by hash key
-	if err = r.client.HDel(ctx, key, keys...).Err(); err != nil {
-		return 0, err
-	}
+	// Remove elem by key
+	_ = r.client.GetDel(ctx, key)
 	return result, nil
 }

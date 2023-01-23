@@ -15,7 +15,7 @@ import (
 func main() {
 	ctx := context.Background()
 	_ = initConfig()
-	redisClient, err := redis.NewRedisClient(ctx, viper.GetString("redis.host")+":"+viper.GetString("redis.port"), "", viper.GetInt("redis.userDb"))
+	redisClient, err := redis.NewRedisClient(ctx, viper.GetString("redis.host")+":"+viper.GetString("redis.port"), "", 0)
 	if err != nil {
 		log.Fatalln(err)
 	}

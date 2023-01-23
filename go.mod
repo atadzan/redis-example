@@ -3,11 +3,15 @@ module redis-example
 go 1.19
 
 require (
+	github.com/go-redis/redis/v8 v8.11.5
+	github.com/json-iterator/go v1.1.12
+)
+
+require (
 	github.com/andybalholm/brotli v1.0.4 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
-	github.com/go-redis/redis/v8 v8.11.5 // indirect
 	github.com/gofiber/fiber/v2 v2.41.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/klauspost/compress v1.15.14 // indirect
@@ -16,6 +20,8 @@ require (
 	github.com/mattn/go-isatty v0.0.17 // indirect
 	github.com/mattn/go-runewidth v0.0.14 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
+	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
+	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.6 // indirect
 	github.com/rivo/uniseg v0.4.3 // indirect
 	github.com/spf13/afero v1.9.3 // indirect

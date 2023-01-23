@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"fmt"
 	"github.com/gofiber/fiber/v2"
 	"math"
 	"redis-example/models"
@@ -21,7 +22,7 @@ func (h *Handler) add(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 	ctx := context.Background()
-
+	fmt.Println(user)
 	result, rErr := h.Service.User.Add(ctx, float64(score), key, user)
 	if rErr != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": rErr.Error()})
