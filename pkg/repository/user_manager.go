@@ -2,8 +2,8 @@ package repository
 
 import (
 	"context"
-	"fmt"
 	"github.com/go-redis/redis/v8"
+	"log"
 	"redis-example/models"
 )
 
@@ -17,52 +17,81 @@ func NewUserManager(client *redis.Client) *UserManager {
 	}
 }
 
-func (r *UserManager) Add(ctx context.Context, key string, value models.User) (int64, error) {
-	var members []*redis.Z
-	member := redis.Z{Score: 1, Member: key}
-	members = append(members, &member)
-	resultCount, iErr := r.client.ZAdd(ctx, "videos", members...).Result()
+func (r *UserManager) Add(ctx context.Context, score float64, key string, value models.User) (int64, error) {
+
+	// Adding to sorted set
+	resultCount, iErr := r.client.ZAdd(ctx, "users", []*redis.Z{{score, key}}...).Result()
 	if iErr != nil {
-		fmt.Println(iErr.Error())
-		return 0, iErr
+		log.Fatalln(iErr)
 	}
 
-	// Another way of adding to cache
-	//result, iErr := r.client.Do(ctx, "ZADD", key, 2, customJson).Result()
-
 	if resultCount != 0 {
-		//if _, err := r.client.Pipelined(ctx, func(rdb redis.Pipeliner) error {
-		//	rdb.
-		//}); err != nil {
-		//	return 0, err
-		//}
-		err := r.client.HSet(ctx, key, "name", value.Name, "lastName", value.LastName, "age", value.Age).Err()
-		if err != nil {
-			return 0, err
+		// Adding value to hash
+		if err := r.client.HSet(ctx, key, "name", value.Name, "lastName", value.LastName, "age", value.Age).Err(); err != nil {
+			log.Fatalln(err)
 		}
-		//fmt.Println()
 	}
 
 	return resultCount, nil
 }
 
-func (r *UserManager) Get(ctx context.Context, offset int64) ([]models.User, error) {
-	fmt.Println("get repo")
-	var users []models.User
-	count := 5
-	result, err := r.client.ZRangeByScore(ctx, "videos", &redis.ZRangeBy{Min: "0", Max: "-1", Offset: offset, Count: int64(count)}).Result()
-	if err != nil {
-		fmt.Println("Error 1")
-		return users, err
+func (r *UserManager) CountSetElems(ctx context.Context, key string) (int64, error) {
+
+	// Get total count of elems in sorted set by set key
+	total, tErr := r.client.ZCard(ctx, key).Result()
+	if tErr != nil {
+		log.Fatalln(tErr)
 	}
-	fmt.Println("result: ", result)
-	for _, key := range result {
+	return total, nil
+}
+
+func (r *UserManager) GetAll(ctx context.Context, key string, offset, count int64) ([]models.User, error) {
+
+	// Get list of elem keys from sorted set
+	result, err := r.client.ZRangeByScore(ctx, key, &redis.ZRangeBy{Min: "-inf", Max: "+inf", Offset: offset, Count: count}).Result()
+	if err != nil {
+		log.Fatalln(err)
+	}
+	var users []models.User
+	for _, k := range result {
 		var user models.User
-		err = r.client.HGetAll(ctx, key).Scan(&user)
+
+		// Get the value from hash by key
+		err = r.client.HGetAll(ctx, k).Scan(&user)
 		if err != nil {
-			return nil, err
+			log.Fatalln(err)
 		}
 		users = append(users, user)
 	}
 	return users, nil
+}
+
+func (r *UserManager) GetByKey(ctx context.Context, key string) (models.User, error) {
+	var user models.User
+
+	// Get the value of key from hash & scan it into struct
+	if err := r.client.HGetAll(ctx, key).Scan(&user); err != nil {
+		return user, err
+	}
+	return user, nil
+}
+
+func (r *UserManager) RemoveElemFromSet(ctx context.Context, set, key string) (int64, error) {
+	// Remove key from sorted set
+	result, err := r.client.ZRem(ctx, set, key).Result()
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	// Get all fields of elem by hash key
+	keys, keyErr := r.client.HKeys(ctx, key).Result()
+	if keyErr != nil {
+		return 0, keyErr
+	}
+
+	// Remove elems all fields by hash key
+	if err = r.client.HDel(ctx, key, keys...).Err(); err != nil {
+		return 0, err
+	}
+	return result, nil
 }

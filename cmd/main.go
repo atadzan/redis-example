@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"fmt"
+	redis2 "github.com/go-redis/redis/v8"
 	"github.com/gofiber/fiber/v2"
 	"github.com/spf13/viper"
 	"log"
@@ -16,21 +16,23 @@ func main() {
 	ctx := context.Background()
 	_ = initConfig()
 	redisClient, err := redis.NewRedisClient(ctx, viper.GetString("redis.host")+":"+viper.GetString("redis.port"), "", viper.GetInt("redis.userDb"))
-	fmt.Println(redisClient)
 	if err != nil {
 		log.Fatalln(err)
-		return
 	}
-	defer redisClient.Close()
+	defer func(redisClient *redis2.Client) {
+		err = redisClient.Close()
+		if err != nil {
+			log.Fatalln(err)
+		}
+	}(redisClient)
 	repos := repository.NewRepository(redisClient)
-	services := services.NewService(repos)
-	handler := handlers.NewHandler(services)
+	service := services.NewService(repos)
+	handler := handlers.NewHandler(service)
 
 	app := fiber.New()
 	handler.InitRoutes(app)
-	fmt.Println(viper.GetString("http.host") + ":" + viper.GetString("http.port"))
-	log.Fatalln(app.Listen(viper.GetString("http.host") + ":" + "8088"))
 
+	log.Fatalln(app.Listen(viper.GetString("http.host") + ":" + "8088"))
 }
 
 func initConfig() error {
